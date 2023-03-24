@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import TodoList from '../components/TodoList';
 import TodoForm from '../components/TodoForm';
+import MyComponent from '../components/MyComponent';
+// import Counter from '../components/realtimeDatabase/Counter';
 
 const TodoPage = () => {
   const [todos, setTodos] = useState([]);
@@ -15,6 +17,7 @@ const TodoPage = () => {
 
   return (
     <div>
+       <MyComponent/>
       <TodoForm addTodo={addTodo} />
       <TodoList todos={todos} deleteTodo={deleteTodo} />
     </div>
