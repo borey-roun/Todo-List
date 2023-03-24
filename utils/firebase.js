@@ -13,6 +13,8 @@ const app = firebase.apps.length
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
   });
 
+   const database = firebase.database(app);
+
 async function addTodoItem(todoText) {
   const todosRef = firebase.database().ref('todos');
   const newTodoRef = todosRef.push();
@@ -29,7 +31,9 @@ async function getAllTodoItems() {
   const todosRef = firebase.database().ref('todos');
   const snapshot = await todosRef.once('value');
   const todos = snapshot.val();
-  
+  if (!todos) {
+    return [];
+  }
   return Object.keys(todos).map((key) => ({
     id: key,
     ...todos[key],
@@ -46,4 +50,4 @@ async function deleteTodoItem(id) {
   await todoRef.remove();
 }
 
-export { addTodoItem, getAllTodoItems, updateTodoItem, deleteTodoItem };
+export {database, addTodoItem, getAllTodoItems, updateTodoItem, deleteTodoItem };

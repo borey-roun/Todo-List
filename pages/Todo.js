@@ -10,6 +10,7 @@ export default function Todo() {
   useEffect(() => {
     async function fetchTodos() {
       const todos = await getAllTodoItems();
+      console.log(todos);
       setTodos(todos);
     }
 
