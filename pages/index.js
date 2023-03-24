@@ -1,6 +1,5 @@
-import Todo from './Todo';
+import TodoPage from './TodoPage';
 
 export default function Home() {
-  return <Todo />;
+  return <TodoPage />;
 }
-<div class="open_grepper_editor" title="Edit & Save To Grepper"></div>;
