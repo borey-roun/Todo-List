@@ -6,6 +6,7 @@ export default function Todo() {
   const [todos, setTodos] = useState([]);
   const [newTodoText, setNewTodoText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingItemId, setEditingItemId] = useState(null);
 
   useEffect(() => {
     async function fetchTodos() {
@@ -21,23 +22,52 @@ export default function Todo() {
     event.preventDefault();
     if (!newTodoText.trim()) return;
 
+    // Check if the new todo item already exists in the list
+    const existingTodo = todos.find((todo) => todo.text === newTodoText);
+    if (existingTodo) {
+      console.warn(`Duplicate item "${newTodoText}" not added to todo list`);
+      return;
+    }
+
     await addTodoItem(newTodoText);
-    const todos = await getAllTodoItems();
-    setTodos(todos);
+
+    // Fetch the updated todo list
+    const updatedTodos = await getAllTodoItems();
+    setTodos(updatedTodos);
+
     setNewTodoText('');
   }
 
   async function handleTodoItemToggle(todoItem) {
     const updates = { completed: !todoItem.completed };
     await updateTodoItem(todoItem.id, updates);
-    const todos = await getAllTodoItems();
-    setTodos(todos);
+
+    // Fetch the updated todo list
+    const updatedTodos = await getAllTodoItems();
+    setTodos(updatedTodos);
   }
 
-  async function handleTodoItemDelete(todoItem) {
-    await deleteTodoItem(todoItem.id);
-    const todos = await getAllTodoItems();
-    setTodos(todos);
+  async function handleTodoItemDelete(todoItemId) {
+    await deleteTodoItem(todoItemId);
+
+    // Fetch the updated todo list
+    const updatedTodos = await getAllTodoItems();
+    setTodos(updatedTodos);
+  }
+
+  function handleTodoItemEditStart(todoItemId) {
+    setEditingItemId(todoItemId);
+  }
+
+  async function handleTodoItemEditEnd(todoItem, newTodoText) {
+    const updates = { text: newTodoText };
+    await updateTodoItem(todoItem.id, updates);
+
+    // Fetch the updated todo list
+    const updatedTodos = await getAllTodoItems();
+    setTodos(updatedTodos);
+
+    setEditingItemId(null);
   }
 
   // Filter todos based on search term
@@ -64,10 +94,23 @@ export default function Todo() {
 
         <ul>
           {filteredTodos.map((todoItem) => (
-            <li key={todoItem.id}>
-              <input type="checkbox" checked={todoItem.completed} onChange={() => handleTodoItemToggle(todoItem)} />
-              <span>{todoItem.text}</span>
-              <button onClick={() => handleTodoItemDelete(todoItem)}>Delete</button>
+            <li key={todoItem.id} onMouseEnter={(e) => e.target.lastElementChild && (e.target.lastElementChild.style.display = 'inline')} onMouseLeave={(e) => e.target.lastElementChild && (e.target.lastElementChild.style.display = 'none')}>
+              {editingItemId === todoItem.id ? (
+                <form onSubmit={(event) => {
+                  event.preventDefault();
+                  handleTodoItemEditEnd(todoItem, event.target.todoInput.value);
+                }}>
+                  <input name="todoInput" type="text" defaultValue={todoItem.text} />
+                  <button type="submit">Save</button>
+                </form>
+              ) : (
+                <>
+                  <span style={{ textDecoration: todoItem.completed ? 'line-through' : 'none' }}>{todoItem.text}</span>
+                  <button onClick={() => handleTodoItemEditStart(todoItem.id)} >Edit</button>
+                  <button onClick={() => handleTodoItemDelete(todoItem.id)} >Remove</button>
+                  <button onClick={() => handleTodoItemToggle(todoItem)}>{todoItem.completed ? 'Mark as Incomplete' : 'Mark as Complete'}</button>
+                </>
+              )}
             </li>
           ))}
         </ul>
