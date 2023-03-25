@@ -1,4 +1,5 @@
-import TodoPage from './TodoPage';
+import TodoPage from "./todoPage";
+
 
 export default function Home() {
   return <TodoPage />;

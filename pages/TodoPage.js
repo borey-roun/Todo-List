@@ -2,22 +2,26 @@ import { database } from "../firebase/initFirebase";
 import { useState, useEffect } from "react";
 import Head from "next/head";
 
-export default function Todo() {
+export default function TodoPage() {
   const [todos, setTodos] = useState([]);
   const [newTodoText, setNewTodoText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingItemId, setEditingItemId] = useState(null);
+  const [hoveredItemId, setHoveredItemId] = useState(null);
 
   useEffect(() => {
     const todosRef = database.ref("todos");
     todosRef.on("value", (snapshot) => {
-      const dataSnapshot = snapshot.val();
-      var data = Object.keys(dataSnapshot).map((key) => ({
-        id: key,
-        ...dataSnapshot[key],
-      }));
-      const valuesArray = Object.values(data);
-      setTodos(valuesArray);
+      if (snapshot && snapshot.val()) {
+        const dataSnapshot = snapshot.val();
+        var data = Object.keys(dataSnapshot).map((key) => ({
+          id: key,
+          ...dataSnapshot[key],
+        }));
+        setTodos(Object.values(data));
+      } else {
+        setTodos([]);
+      }
     });
 
     return () => {
@@ -28,15 +32,16 @@ export default function Todo() {
   async function handleAddTodoSubmit(event) {
     event.preventDefault();
     if (!newTodoText.trim()) return;
-
     // Check if the new todo item already exists in the list
     const existingTodo = todos.find((todo) => todo.text === newTodoText);
     if (existingTodo) {
-      console.warn(`Duplicate item "${newTodoText}" not added to todo list`);
+      window.alert(
+        `There should be no duplicate item in the list ! "${newTodoText}" already have in the list !`
+      );
       return;
     }
 
-    const response = await fetch("/api/todo", {
+    await fetch("/api/todo", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,13 +56,7 @@ export default function Todo() {
   }
 
   async function handleTodoItemDelete(todoItemId) {
-    try {
-      const res = await fetch(`/api/todo/${todoItemId}`, { method: "DELETE" });
-      console.log(res);
-      // setTodos(updatedTodos);
-    } catch (error) {
-      console.error(error);
-    }
+    await fetch(`/api/todo/${todoItemId}`, { method: "DELETE" });
   }
 
   function handleTodoItemEditStart(todoItemId) {
@@ -65,39 +64,30 @@ export default function Todo() {
   }
 
   async function handleTodoItemEditEnd(todoItem, newText) {
-    try {
-      await fetch(`/api/todo/${todoItem.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: newText,
-          completed: todoItem.completed,
-          createdAt: todoItem.createdAt,
-        }),
-      });
-    } catch (error) {
-      console.error(error);
-    }
+    await fetch(`/api/todo/${todoItem.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: newText,
+        completed: todoItem.completed,
+        createdAt: todoItem.createdAt,
+      }),
+    });
     setEditingItemId(null);
   }
 
   async function handleTodoItemToggle(todoItem) {
-    try {
-      await fetch(`/api/todo/${todoItem.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: todoItem.text,
-          completed: !todoItem.completed,
-          createdAt: todoItem.createdAt,
-        }),
-      });
-    } catch (error) {
-      console.error(error);
-    }
+    await fetch(`/api/todo/${todoItem.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: todoItem.text,
+        completed: !todoItem.completed,
+        createdAt: todoItem.createdAt,
+      }),
+    });
   }
 
-  // Filter todos based on search term
   const filteredTodos =
     todos.length > 0
       ? todos.filter((todo) =>
@@ -109,85 +99,93 @@ export default function Todo() {
     <div>
       <Head>
         <title>Todo List</title>
-        <link rel="icon" href="/favicon.ico" />
       </Head>
-
       <main>
         <h1>Todo List</h1>
-
-        <form onSubmit={handleAddTodoSubmit}>
+        <form onSubmit={handleAddTodoSubmit} style={{ marginBottom: "10px" }}>
+          <label htmlFor="newItem">New Item: </label>
           <input
             type="text"
             value={newTodoText}
             onChange={(event) => setNewTodoText(event.target.value)}
           />
-          <button type="submit">Add</button>
         </form>
 
+        <label htmlFor="searchQuery">Search Items: </label>
         <input
           type="text"
-          placeholder="Search todos"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
         />
 
-        <ul>
-          {filteredTodos.map((todoItem) => (
-            <li
-              key={todoItem.id}
-              onMouseEnter={(e) =>
-                e.target.lastElementChild &&
-                (e.target.lastElementChild.style.display = "inline")
-              }
-              onMouseLeave={(e) =>
-                e.target.lastElementChild &&
-                (e.target.lastElementChild.style.display = "none")
-              }
-            >
-              {editingItemId === todoItem.id ? (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    handleTodoItemEditEnd(
-                      todoItem,
-                      event.target.todoInput.value
-                    );
-                  }}
-                >
-                  <input
-                    name="todoInput"
-                    type="text"
-                    defaultValue={todoItem.text}
-                  />
-                  <button type="submit">Save</button>
-                </form>
-              ) : (
-                <>
-                  <span
-                    style={{
-                      textDecoration: todoItem.completed
-                        ? "line-through"
-                        : "none",
+        {filteredTodos.length === 0 && searchTerm.length != 0 ? (
+          <p>No result. Create a new one instead!</p>
+        ) : (
+          <ul>
+            {filteredTodos.map((todoItem) => (
+              <li
+                key={todoItem.id}
+                onMouseEnter={() => setHoveredItemId(todoItem.id)}
+                onMouseLeave={() => setHoveredItemId(null)}
+                style={{ margin: "10px" }}
+              >
+                {editingItemId === todoItem.id ? (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      handleTodoItemEditEnd(
+                        todoItem,
+                        event.target.todoInput.value
+                      );
                     }}
                   >
-                    {todoItem.text}
-                  </span>
-                  <button onClick={() => handleTodoItemEditStart(todoItem.id)}>
-                    Edit
-                  </button>
-                  <button onClick={() => handleTodoItemDelete(todoItem.id)}>
-                    Remove
-                  </button>
-                  <button onClick={() => handleTodoItemToggle(todoItem)}>
-                    {todoItem.completed
-                      ? "Mark as Incomplete"
-                      : "Mark as Complete"}
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+                    <input
+                      name="todoInput"
+                      type="text"
+                      defaultValue={todoItem.text}
+                    />
+                  </form>
+                ) : (
+                  <>
+                    <span
+                      style={{
+                        textDecoration: todoItem.completed
+                          ? "line-through"
+                          : "none",
+                      }}
+                    >
+                      {todoItem.text}{" "}
+                    </span>
+                    {hoveredItemId === todoItem.id && (
+                      <>
+                        <button
+                          onClick={() => handleTodoItemEditStart(todoItem.id)}
+                          style={{ marginLeft: "10px" }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleTodoItemDelete(todoItem.id)}
+                          style={{ marginLeft: "10px" }}
+                        >
+                          Remove
+                        </button>
+                        <button
+                          onClick={() => handleTodoItemToggle(todoItem)}
+                          style={{ marginLeft: "10px" }}
+                        >
+                          {todoItem.completed
+                            ? "Mark as Incomplete"
+                            : "Mark as Complete"}
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
     </div>
   );
