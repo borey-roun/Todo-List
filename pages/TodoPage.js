@@ -18,6 +18,7 @@ export default function TodoPage() {
           id: key,
           ...dataSnapshot[key],
         }));
+        data.sort((a, b) => a.text.localeCompare(b.text));
         setTodos(Object.values(data));
       } else {
         setTodos([]);
@@ -59,11 +60,21 @@ export default function TodoPage() {
     await fetch(`/api/todo/${todoItemId}`, { method: "DELETE" });
   }
 
+  function handleTodoItemCancelEdit() {
+    setEditingItemId(null);
+  }
+
   function handleTodoItemEditStart(todoItemId) {
     setEditingItemId(todoItemId);
   }
 
   async function handleTodoItemEditEnd(todoItem, newText) {
+    const existingTodo = todos.find((todo) => todo.text === newText);
+    if (existingTodo) {
+      window.alert(`This item already in the list !`);
+      setEditingItemId(null);
+      return;
+    }
     await fetch(`/api/todo/${todoItem.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -90,9 +101,7 @@ export default function TodoPage() {
 
   const filteredTodos =
     todos.length > 0
-      ? todos.filter((todo) =>
-          todo.text.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+      ? todos.filter((todo) => todo.text.includes(searchTerm))
       : [];
 
   return (
@@ -130,21 +139,30 @@ export default function TodoPage() {
                 style={{ margin: "10px" }}
               >
                 {editingItemId === todoItem.id ? (
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      handleTodoItemEditEnd(
-                        todoItem,
-                        event.target.todoInput.value
-                      );
-                    }}
-                  >
-                    <input
-                      name="todoInput"
-                      type="text"
-                      defaultValue={todoItem.text}
-                    />
-                  </form>
+                  <div style={{ display: "flex" }}>
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        handleTodoItemEditEnd(
+                          todoItem,
+                          event.target.todoInput.value
+                        );
+                      }}
+                    >
+                      <input
+                        name="todoInput"
+                        type="text"
+                        defaultValue={todoItem.text}
+                      />
+                    </form>
+
+                    <button
+                      onClick={() => handleTodoItemCancelEdit()}
+                      style={{ marginLeft: "10px" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <span
